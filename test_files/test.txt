@@ -1,0 +1,49 @@
+program
+
+a | b : int; // Numeri inseriti dall'utente
+gcd : int;  // Variabile globale per il massimo comune divisore
+
+// Funzione per calcolare il GCD usando l'algoritmo di Euclide
+def calculateGCD () {
+    temp1 : int;
+    temp2 : int;
+
+    temp1 := a;
+    temp2 := b;
+
+    while (temp1 <> temp2) do {
+        if (temp1 > temp2) then {
+            temp1 := temp1- temp2;
+        } else {
+            temp2 := temp2 - temp1;
+        }
+    }
+
+    gcd := temp1; // Salva il risultato nella variabile globale
+}
+
+// Funzione per calcolare l'LCM usando il GCD
+def calculateLCM() : double {
+    return (a * b) / gcd;
+}
+
+// Funzione principale
+begin
+
+    lcm : double; // Variabile locale per l'LCM
+
+    // Input dei due numeri
+    "Inserisci due numeri interi positivi: " !>>;
+    a | b <<;
+
+    // Calcolo del GCD
+    calculateGCD();
+
+    // Calcolo dell'LCM
+    lcm := calculateLCM();
+
+    // Output del risultato
+    "Il massimo comune divisore (GCD) di "+ a +" e "+ b +" è: " +  gcd !>>;
+    "Il minimo comune multiplo (LCM) "+ a +" e "+ b +" è: " + lcm !>>;
+
+end

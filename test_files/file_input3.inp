@@ -1,0 +1,48 @@
+program
+
+ sommagrande | sommapiccola: double;
+ i:0;
+ x | y | risultato : double;
+ grande | nonusata: bool;
+ befint : int;
+ def moltiplicazione( x: double; y: double; ref res : double; ref grande: bool)
+ {
+    befint : double;
+	risultato= x*y | nonusata : double;
+
+	if ((x*y) >= 100) then {
+		grande := true;
+	}
+	else{
+		grande := false;
+	}
+	res := risultato;                   // commento di prova
+ }
+
+
+
+begin
+
+y := 2.3;
+
+
+while (i > 0) do{
+    x : int;
+    z : int;
+    k : int;
+    y : int;
+	x := -1;
+	y := -1;
+
+	z := x*y;
+
+    k := z;
+
+
+
+}
+
+y := 4.3;
+moltiplicazione(x, y , risultato, grande);
+
+end

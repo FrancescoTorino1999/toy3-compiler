@@ -1,1 +1,1 @@
-# toy3-compiler
+Progetto che utilizza JFlex e JavaCUP per creare un compilatore per il linguaggio “Toy3”. Il compilatore esegue analisi lessicale, sintattica e semantica, seguita dalla generazione del codice target, che in questo caso è in linguaggio C.

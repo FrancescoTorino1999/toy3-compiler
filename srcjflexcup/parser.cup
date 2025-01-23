@@ -1,0 +1,473 @@
+import java_cup.runtime.*;
+import compilatori.visitor.classes.visitorclasses.baseclasses.*;
+import compilatori.visitor.classes.visitorclasses.Expressions.*;
+import compilatori.visitor.classes.visitorclasses.Expressions.Rels.*;
+import compilatori.visitor.classes.visitorclasses.Expressions.Arith.*;
+import compilatori.visitor.classes.visitorclasses.Expressions.Bool.*;
+import compilatori.visitor.classes.visitorclasses.Expressions.Consts.*;
+import compilatori.visitor.classes.visitorclasses.Operators.*;
+import compilatori.visitor.classes.visitorclasses.Statements.*;
+import java.util.ArrayList;
+import java.util.Stack;
+
+
+// Terminali
+terminal PROGRAM, BEGIN, END, COLON, SEMI, COMMA, ID, ASSIGN, INT, DOUBLE, BOOL, CHAR, STRING, DEF, LPAR, RPAR, REF, LBRAC, RBRAC, IN, OUT, OUTNL, IF, THEN, ELSE, WHILE, LET, INLET, ENDLET, DO, RETURN, MINUS, NOT, PLUS, TIMES, DIV, AND, OR, GT, GE, LT, LE, EQ, NE, AMPERSAND, ASSIGNDECL, PIPE;
+terminal UMINUS;
+terminal Integer INT_CONST;
+terminal Double DOUBLE_CONST;
+terminal Boolean TRUE, FALSE;
+terminal String CHAR_CONST;
+terminal String STRING_CONST;
+// Non terminali
+non terminal Programma;
+non terminal Decls;
+non terminal VarDecls;
+non terminal VarDecl;
+non terminal VarsOptInit;
+non terminal TypeOrConstant;
+non terminal Type;
+non terminal Constant;
+non terminal DefDecl;
+non terminal ParDecls;
+non terminal ParDecl;
+non terminal PVars;
+non terminal PVar;
+non terminal OptType;
+non terminal Body;
+non terminal Statements;
+non terminal Stat;
+non terminal Vars;
+non terminal Exprs;
+non terminal Expr;
+non terminal NoFunCallExpr;
+non terminal ArithOp;
+non terminal BoolOp;
+non terminal RelOp;
+non terminal FunCall;
+non terminal BeginEnd;
+non terminal BeginEndLet;
+
+
+// Precedenze
+precedence left OR;
+precedence left AND;
+precedence right NOT;
+precedence left EQ, NE, LT, LE, GT, GE;
+precedence left PLUS, MINUS;
+precedence left TIMES, DIV;
+precedence right UMINUS;
+
+
+
+// Regole di produzione
+Programma ::= PROGRAM Decls:decls BeginEnd:beginEnd
+              {:
+                  RESULT = new ProgramOp(
+                      (DeclsOp) decls,
+                      (BeginEndOp) beginEnd                  );
+              :};
+
+BeginEnd ::= BEGIN VarDecls:varDecls Statements:stats END
+              {:
+                  RESULT = new BeginEndOp(
+                      (ArrayList<VarDeclOp>) varDecls,
+                      (ArrayList<StatOp>) stats
+                  );
+              :};
+BeginEndLet ::= INLET VarDecls:varDecls Statements:stats ENDLET
+              {:
+                  RESULT = new BeginEndOp(
+                      (ArrayList<VarDeclOp>) varDecls,
+                      (ArrayList<StatOp>) stats
+                  );
+              :};
+
+Decls ::= VarDecl:varDecl Decls:decls
+           {:
+               ((ArrayList<VarDeclOp>) ((DeclsOp) decls).getDecls()).add(0, (VarDeclOp) varDecl);
+               RESULT = decls;
+           :}
+       | DefDecl:defDecl Decls:decls
+           {:
+               ((ArrayList<DefDeclOp>) ((DeclsOp) decls).getDefDeclOp()).add(0, (DefDeclOp) defDecl);
+               RESULT = decls;
+           :}
+       | /* Epsilon */
+           {:
+               RESULT = new DeclsOp(new ArrayList<>(), new ArrayList<>());
+           :};
+
+VarDecls ::= VarDecls:varDecls VarDecl:varDecl
+              {:
+                  ((ArrayList<VarDeclOp>) varDecls).add(0, (VarDeclOp) varDecl);
+                  RESULT = varDecls;
+              :}
+          | /* Epsilon */
+              {:
+                  RESULT = new ArrayList<>();
+              :};
+
+VarDecl ::= VarsOptInit:varsOptInit COLON TypeOrConstant:typeOrConstant SEMI
+              {:
+                  RESULT = new VarDeclOp(
+                      new VarsOptInitOp((ArrayList<VarOpInitOp>) varsOptInit,
+                      (TypeOrConstant) typeOrConstant)
+                  );
+              :};
+
+VarsOptInit ::= ID:id PIPE VarsOptInit:varsOptInit
+                 {:
+                    ArrayList<VarOpInitOp> list = new ArrayList<>();
+                    list.add(0, new VarOpInitOp(new Identifier(String.valueOf(id)), null, null));
+                    list.addAll((ArrayList<VarOpInitOp>) varsOptInit);
+                    RESULT = list;
+                 :}
+             | ID:id ASSIGNDECL Expr:expr PIPE VarsOptInit:varsOptInit
+                 {:
+                    ArrayList<VarOpInitOp> list = new ArrayList<>();
+                    list.add(0, new VarOpInitOp(new Identifier(String.valueOf(id)), null, (Visitable) expr));
+                    list.addAll((ArrayList<VarOpInitOp>) varsOptInit);
+                    RESULT = list;
+                 :}
+             | ID:id
+                 {:
+                    RESULT = new ArrayList<VarOpInitOp>();
+                    ((ArrayList<VarOpInitOp>) RESULT).add(0, new VarOpInitOp(new Identifier(String.valueOf(id)), null, null));
+                 :}
+             | ID:id ASSIGNDECL Expr:expr
+                 {:
+                    RESULT = new ArrayList<VarOpInitOp>();
+                    ((ArrayList<VarOpInitOp>) RESULT).add(0, new VarOpInitOp(new Identifier(String.valueOf(id)), null, (Visitable) expr));
+                 :};
+
+TypeOrConstant ::= Type:t
+                {:
+                    RESULT = (Type) t;
+                 :}
+                | Constant:c
+                 {:
+                    RESULT = (Const) c;
+                 :}
+                 ;
+
+Type ::= INT:lessema  {:
+            RESULT = new Type("int");
+         :}
+      | BOOL:lessema  {:
+            RESULT = new Type("bool");
+         :}
+      | DOUBLE:lessema  {:
+            RESULT = new Type("double");
+         :}
+      | STRING:lessema  {:
+            RESULT = new Type("string");
+         :}
+      | CHAR:lessema  {:
+            RESULT = new Type("char");
+         :};
+
+Constant ::= TRUE:lessema
+                {:
+                    RESULT = (Visitable) new BoolConst(String.valueOf(lessema));
+                :}
+           | FALSE:lessema
+                {:
+                    RESULT = (Visitable) new BoolConst(String.valueOf(lessema));
+                :}
+           | INT_CONST:lessema
+                {:
+                    RESULT =  (Visitable) new IntConst(String.valueOf(lessema));
+                :}
+           | DOUBLE_CONST:lessema
+                {:
+                    RESULT = (Visitable) new DoubleConst(String.valueOf(lessema));
+                :}
+           | CHAR_CONST:lessema
+                {:
+                    RESULT = (Visitable) new CharConst(String.valueOf(lessema));
+                :}
+           | STRING_CONST:lessema
+                {:
+                    RESULT = (Visitable) new StringConst(String.valueOf(lessema));
+                :};
+
+DefDecl ::= DEF ID:id LPAR ParDecls:parDecls RPAR OptType:optType Body:body
+             {:
+                 RESULT = new DefDeclOp(
+                     new Identifier(String.valueOf(id)),
+                     (ArrayList<ParDeclOp>) parDecls,
+                     (OptType) optType,
+                     (BodyOp) body
+                 );
+             :}
+          | DEF ID:id LPAR RPAR OptType:optType Body:body
+             {:
+                 RESULT = new DefDeclOp(
+                     new Identifier(String.valueOf(id)),
+                     new ArrayList<>(), // Lista vuota di parametri
+                     (OptType) optType,
+                     (BodyOp) body
+                 );
+             :};
+
+ParDecls ::= ParDecl:parDecl SEMI ParDecls:parDecls
+             {:
+                 ArrayList<ParDeclOp> list = new ArrayList<>();
+                 list.add(0, (ParDeclOp) parDecl);
+                 list.addAll((ArrayList<ParDeclOp>) parDecls);
+                 RESULT = list;
+             :}
+           | ParDecl:parDecl
+             {:
+                 ArrayList<ParDeclOp> list = new ArrayList<>();
+                 list.add(0, (ParDeclOp) parDecl);
+                 RESULT = list;
+             :};
+
+ParDecl ::= PVars:pVars COLON Type:type
+             {:
+                 RESULT = new ParDeclOp(
+                     (ArrayList<PVarOp>) pVars,
+                     (Type) type
+                 );
+             :};
+
+PVars ::= PVar:pVar COMMA PVars:pVars
+          {:
+              ArrayList<PVarOp> list = new ArrayList<>();
+              list.add(0, (PVarOp) pVar);
+              list.addAll((ArrayList<PVarOp>) pVars);
+              RESULT = list;
+          :}
+        | PVar:pVar
+          {:
+              ArrayList<PVarOp> list = new ArrayList<>();
+              list.add(0, (PVarOp) pVar);
+              RESULT = list;
+          :};
+
+PVar ::= ID:id
+          {:
+              RESULT = new PVarOp(
+                  new Identifier(String.valueOf(id)),
+                  new Reference(Boolean.FALSE)
+              );
+          :}
+       | REF ID:id
+          {:
+              RESULT = new PVarOp(
+                  new Identifier(String.valueOf(id)),
+                  new Reference(Boolean.TRUE)
+              );
+          :};
+
+OptType ::= COLON Type:type
+             {:
+                 RESULT = new OptType(
+                     (Type) type
+                 );
+             :}
+          | /* Epsilon */
+             {:
+                 RESULT = null; // Nessun tipo opzionale specificato
+             :};
+
+Body ::= LBRAC VarDecls:vardecls Statements:stats RBRAC
+            {:
+                      RESULT = new BodyOp((ArrayList<VarDeclOp>) vardecls, (ArrayList<StatOp>) stats);
+                  :};
+
+Statements ::= Stat:stat Statements:stats
+                  {:
+                      ((ArrayList<StatOp>) stats).add(0, (StatOp) stat);
+                      RESULT = stats;
+                  :}
+            | /* Epsilon */
+                  {:
+                      RESULT = new ArrayList<>();
+                  :};
+
+Stat ::= Vars:vars IN SEMI
+           {:
+                RESULT = new ReadOp(
+                    (ArrayList<Identifier>) vars
+                );
+            :}
+       | Exprs:exprs OUT SEMI
+          {:
+              RESULT = new WriteOp(
+                  (ArrayList<Visitable>) exprs,
+                  false
+              );
+          :}
+       | Exprs:exprs OUTNL SEMI
+          {:
+                RESULT = new WriteOp(
+                    (ArrayList<Visitable>) exprs,
+                    true
+                );
+            :}
+       | Vars:vars ASSIGN Exprs:exprs SEMI
+          {:
+              RESULT = new AssignOp(
+                  (ArrayList<Identifier>) vars,
+                  (ArrayList<Visitable>) exprs
+              );
+          :}
+       | FunCall:funcall SEMI
+          {:
+              RESULT = new FunCallOp(
+                  (FunCall) funcall
+              );
+          :}
+       | IF LPAR Expr:expr RPAR THEN Body:bodyThen ELSE Body:bodyElse
+          {:
+              RESULT = new IfThenElseOp(
+                  (Visitable) expr,
+                  (BodyOp) bodyThen,
+                  (BodyOp) bodyElse
+              );
+          :}
+       | IF LPAR Expr:expr RPAR THEN Body:bodyThen
+          {:
+              RESULT = new IfThenOp(
+                  (Visitable) expr,
+                  (BodyOp) bodyThen
+              );
+          :}
+       | WHILE LPAR Expr:expr RPAR DO Body:body
+          {:
+              RESULT = new WhileOp(
+                  (Visitable) expr,
+                  (BodyOp) body
+              );
+          :}
+      | LET Decls:decls  BeginEndLet:beginEnd SEMI
+          {:
+              RESULT = new LetOp(
+                  (DeclsOp) decls,
+                  (BeginEndOp) beginEnd                  );
+          :}
+       | RETURN Expr:expr SEMI
+          {:
+              RESULT = new ReturnOp(
+                  (Visitable) expr
+              );
+          :};
+
+Vars ::= ID:id PIPE Vars:vars
+          {:
+              ArrayList<Identifier> list = new ArrayList<>();
+              list.add(0, new Identifier(String.valueOf(id)));
+              list.addAll((ArrayList<Identifier>) vars);
+              RESULT = list;
+          :}
+      | ID:id
+          {:
+              ArrayList<Identifier> list = new ArrayList<>();
+              list.add(0, new Identifier(String.valueOf(id)));
+              RESULT = list;
+          :};
+
+Exprs ::= Expr:expr COMMA Exprs:exprs
+          {:
+              ArrayList<Visitable> list = new ArrayList<>();
+              list.add(0, (Visitable) expr);
+              list.addAll((ArrayList<Visitable>) exprs);
+              RESULT = list;
+          :}
+       | Expr:expr
+          {:
+              ArrayList<Visitable> list = new ArrayList<>();
+              list.add(0, (Visitable) expr);
+              RESULT = list;
+          :};
+
+FunCall ::= ID:id LPAR Exprs:exprs RPAR
+           {:
+               RESULT = new FunCall(
+                   new Identifier(String.valueOf(id)),
+                   (ArrayList<Visitable>) exprs
+               );
+           :}
+         | ID:id LPAR RPAR
+           {:
+               RESULT = new FunCall(
+                   new Identifier(String.valueOf(id)),
+                   new ArrayList<>()
+               );
+           :};
+
+Expr ::= Expr:e1 PLUS Expr:e2
+        {:
+            RESULT = new AddOp("plus", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 MINUS Expr:e2
+        {:
+            RESULT = new MinusOp("minus", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 TIMES Expr:e2
+        {:
+            RESULT = new TimesOp("times", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 DIV Expr:e2
+        {:
+            RESULT = new DivOp("div", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 AND Expr:e2
+        {:
+            RESULT = new AndOp("and", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 OR Expr:e2
+        {:
+            RESULT = new OrOp("or", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 GT Expr:e2
+        {:
+            RESULT = new GtOp("greater_than", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 GE Expr:e2
+        {:
+            RESULT = new GeOp("greater_equal", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 LT Expr:e2
+        {:
+            RESULT = new LtOp("less_than", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 LE Expr:e2
+        {:
+            RESULT = new LeOp("less_equal", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 EQ Expr:e2
+        {:
+            RESULT = new EqOp("equal", (Visitable) e1, (Visitable) e2);
+        :}
+      | Expr:e1 NE Expr:e2
+        {:
+            RESULT = new NeOp("not_equal", (Visitable) e1, (Visitable) e2);
+        :}
+      | LPAR Expr:expr RPAR
+        {:
+            RESULT = expr;
+        :}
+      | MINUS Expr:expr
+        {:
+            RESULT = new UminusOp("minus", (Visitable) expr);
+        :}
+      | NOT Expr:expr
+        {:
+            RESULT = new NotOp("not", (Visitable) expr);
+        :}
+      | ID:id
+        {:
+            RESULT = new Identifier(String.valueOf(id));
+        :}
+      | FunCall:funcall
+        {:
+            RESULT = (FunCall) funcall;
+        :}
+      | Constant:constant
+        {:
+            RESULT = (Const) constant;
+        :};

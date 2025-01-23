@@ -1,0 +1,27 @@
+program
+
+name : string; // Numero fornito dall'utente come stringa
+times : int;     // Prodotto delle cifre
+
+// Funzione per verificare se una stringa contiene solo cifre
+def stampa() {
+
+    timestamp : int;
+
+    while (times > 0) do {
+        timestamp := (10 - times) * -1;
+        "Ciao per la " + times + "volta " + name !>>;
+        times := times - 1;
+    }
+}
+
+begin
+    "Inserisci il nome" !>>;
+    "->" >>;
+    name <<;
+    "Inserisci quante volte vuoi essere salutato" !>>;
+    "->" >>;
+    times <<;
+    stampa();
+end
+

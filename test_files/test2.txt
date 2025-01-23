@@ -1,0 +1,63 @@
+program
+
+number : double; // Numero fornito dall'utente
+sum : double;    // Somma delle cifre del numero
+
+// Funzione per dividere un numero per 10 senza usare il modulo
+def divideByTen(num : double ; ref remainder : double) : double {
+    divisor : double;
+    result : 0;
+    remainder := num;
+    divisor := 1.0;
+
+    while (divisor <= num) do {
+        divisor := divisor * 10;
+    }
+    divisor := divisor / 10;
+
+    while (divisor > 0) do {
+        if (remainder >= divisor) then {
+            remainder := remainder - divisor;
+            result := result + 1;
+        } else {
+            divisor := divisor / 10;
+            result := result * 10;
+        }
+    }
+
+    return result / 10;
+}
+
+// Funzione per calcolare la somma delle cifre
+def calculateSum() {
+    remainder : 0.0;
+    temp : double;
+    ret : string;
+    temp := number;
+    sum := 0;
+
+    while (temp > 0) do {
+        divideByTen("ciao", remainder);
+        sum := sum + remainder;
+        temp := temp - remainder;
+        temp := temp / 10;
+    }
+}
+
+begin
+
+    // Input dell'utente
+    "Inserisci un numero positivo: " !>>;
+    number <<;
+
+    if (number <= 0) then {
+        "Errore: Inserisci un numero positivo." !>>;
+    }
+
+    // Calcolo della somma delle cifre
+    calculateSum();
+
+    // Output del risultato
+    "La somma delle cifre è: " + sum >>;
+
+end
